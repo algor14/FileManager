@@ -33,7 +33,8 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="ConsoleGraphics.cs">
+    <Reference Include="ConsoleGraphics.cs, Version=1.0.0.0, Culture=neutral, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
       <HintPath>lib\ConsoleGraphics.cs.dll</HintPath>
     </Reference>
     <Reference Include="System" />
@@ -46,7 +47,9 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="FileItem.cs" />
     <Compile Include="FileManager.cs" />
+    <Compile Include="FilesProcessor.cs" />
     <Compile Include="FilesTab.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

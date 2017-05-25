@@ -13,7 +13,7 @@ namespace FileManager
         {
             Console.WindowWidth = 140;
             Console.WindowHeight = 54;
-            //Console.SetBufferSize(Console.WindowWidth, Console.WindowHeight);
+            Console.SetBufferSize(Console.WindowWidth, Console.WindowHeight);
             Console.BackgroundColor = ConsoleColor.Black;
             Console.CursorVisible = false;
             Console.Clear();
