@@ -27,9 +27,6 @@ namespace FileManager
         private FileItem buffer = null;
         private FilesProcessor fileProcessor;
         public object syncObject = new object();
-        private long dirSize = 0;           // for count forder properties
-        private int filesNumber = 0;        // for count forder properties
-        private int foldersNumber = 0;      // for count forder properties
         private bool IsCountingNow = false; // for count forder properties
         private Thread threadCounter;       // for count forder properties
 
@@ -145,6 +142,9 @@ namespace FileManager
 
         void GetDirectorySize(string p)
         {
+            long dirSize = 0;
+            int filesNumber = 0;
+            int foldersNumber = 0;
             string[] a = Directory.GetFiles(p, "*.*", SearchOption.AllDirectories);
             foldersNumber = Directory.GetDirectories(p, "*.*", SearchOption.AllDirectories).Length;
             WritePropery(7, "Folders:", foldersNumber.ToString());
@@ -170,9 +170,6 @@ namespace FileManager
             try
             {
                 IsCountingNow = true;
-                dirSize = 0;
-                filesNumber = 0;
-                foldersNumber = 0;
                 GetDirectorySize(currentTab.GetFileItem().FullPath);
             }
             catch (Exception e)
@@ -184,7 +181,7 @@ namespace FileManager
 
         private void AbortCountingProperties()
         {
-            IsCountingNow = false;            
+            IsCountingNow = false;
         }
 
         private void GetProperties()

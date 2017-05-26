@@ -53,18 +53,6 @@ namespace FileManager
             return allFileItems[currentElement];
         }
 
-
-
-
-
-
-
-
-
-
-
-        
-        
         public void GetFolderInfo(out string size, out int filesNumber, out int foldersNumber)
         {
 
@@ -74,24 +62,6 @@ namespace FileManager
             filesNumber = di.EnumerateFiles("*.*", SearchOption.AllDirectories).Count();
             foldersNumber = di.EnumerateDirectories("*.*", SearchOption.AllDirectories).Count();
         }
-
-        
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
         public void UpdateFolder()
         {
@@ -161,7 +131,6 @@ namespace FileManager
             else
                 WriteSimpleLine(allFileItems[currentElement], leftOffsetTab, CurrentLine);
         }
-
         
         private void InitTab()
         {
