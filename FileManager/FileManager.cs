@@ -9,7 +9,7 @@ using System.Threading;
 
 namespace FileManager
 {
-    class FileManager
+    public class FileManager
     {
         private const int TopCoordTabs = 5;
         private const int BottomCoordTabs = 30;
@@ -18,7 +18,7 @@ namespace FileManager
         private const int LeftOffsetTab1 = 5;
         private const int LeftOffsetTab2 = 75;
 
-        private string path1 = @"C:\";
+        private string path1 = @"D:\";
         private string path2 = @"C:\";
         private int PressesAllowedPause = 10; // helps to avoid wrong enter presses
         private FilesTab tab1;
@@ -26,12 +26,18 @@ namespace FileManager
         private FilesTab currentTab;
         private FileItem buffer = null;
         private FilesProcessor fileProcessor;
+        public object syncObject = new object();
+        private long dirSize = 0;           // for count forder properties
+        private int filesNumber = 0;        // for count forder properties
+        private int foldersNumber = 0;      // for count forder properties
+        private bool IsCountingNow = false; // for count forder properties
+        private Thread threadCounter;       // for count forder properties
 
         public FileManager()
         {
             fileProcessor = new FilesProcessor(this);
-            tab1 = new FilesTab(path1, TopCoordTabs, BottomCoordTabs, LeftOffsetTab1, MaxLineLength);
-            tab2 = new FilesTab(path2, TopCoordTabs, BottomCoordTabs, LeftOffsetTab2, MaxLineLength);
+            tab1 = new FilesTab(this, path1, TopCoordTabs, BottomCoordTabs, LeftOffsetTab1, MaxLineLength);
+            tab2 = new FilesTab(this, path2, TopCoordTabs, BottomCoordTabs, LeftOffsetTab2, MaxLineLength);
             currentTab = tab1;
             currentTab.SwitchActivation();
             DrawMenu();
@@ -104,6 +110,13 @@ namespace FileManager
                 ChangeTab();
             if (Input.IsKeyDown(Keys.BACK))
                 FolderUp();
+            if (Input.IsKeyDown(Keys.ESCAPE))
+                AbortCountingProperties();
+            if (IsCountingNow)
+            {
+                WriteLine("Press Esc to abort properties");
+                return;
+            }
             if (Input.IsKeyDown(Keys.F1))
                 CopyCutFile();
             if (Input.IsKeyDown(Keys.F2))
@@ -130,6 +143,50 @@ namespace FileManager
             currentTab.MoveCursor(isDown);
         }
 
+        void GetDirectorySize(string p)
+        {
+            string[] a = Directory.GetFiles(p, "*.*", SearchOption.AllDirectories);
+            foldersNumber = Directory.GetDirectories(p, "*.*", SearchOption.AllDirectories).Length;
+            WritePropery(7, "Folders:", foldersNumber.ToString());
+            foreach (string name in a)
+            {
+                if (!IsCountingNow)
+                {
+                    ClearPropertyWindow();
+                    break;
+                }
+                FileInfo info = new FileInfo(name);
+                dirSize += info.Length;
+                filesNumber++;
+                WritePropery(5, "Size:", currentTab.ConstructSize(dirSize));
+                WritePropery(6, "Files:", filesNumber.ToString());
+            }
+            IsCountingNow = false;
+        }
+
+        private void CountFolder()
+        {
+            DirectoryInfo di = new DirectoryInfo(currentTab.GetFileItem().FullPath);
+            try
+            {
+                IsCountingNow = true;
+                dirSize = 0;
+                filesNumber = 0;
+                foldersNumber = 0;
+                GetDirectorySize(currentTab.GetFileItem().FullPath);
+            }
+            catch (Exception e)
+            {
+                IsCountingNow = false;
+                WriteLine(e.Message);
+            }
+        }
+
+        private void AbortCountingProperties()
+        {
+            IsCountingNow = false;            
+        }
+
         private void GetProperties()
         {
             ClearPropertyWindow();
@@ -141,13 +198,8 @@ namespace FileManager
             WritePropery(4, "Last write time:", fi.LastWriteTime.ToString());
             if (fi.Extension == "dir")
             {
-                string dirSize;
-                int filesNumber;
-                int foldersNumber;
-                currentTab.GetFolderInfo(out dirSize, out filesNumber, out foldersNumber);
-                WritePropery(5, "Size:", dirSize);
-                WritePropery(6, "Files:", filesNumber.ToString());
-                WritePropery(7, "Folders:", foldersNumber.ToString());
+                threadCounter = new Thread(CountFolder);
+                threadCounter.Start();
             }
             else
             {
@@ -158,13 +210,24 @@ namespace FileManager
 
         private void WritePropery(int propIndex, string propName, string propValue)
         {
-            int posX;
-            posX = currentTab == tab2 ? 72 : 3;
-            Console.SetCursorPosition(posX, 38 + propIndex);
-            Console.Write(propName);
-            Console.SetCursorPosition(posX + 20, 38 + propIndex);
-            Console.Write(propValue);
+            lock (syncObject)
+            {
+                int posX;
+                posX = currentTab == tab2 ? 72 : 3;
+                Console.SetCursorPosition(posX, 38 + propIndex);
+                Console.Write(propName.PadRight(Console.WindowWidth / 2 - 40));
+                Console.SetCursorPosition(posX + 20, 38 + propIndex);
+                Console.Write(propValue);
+            }
         }
+
+
+
+
+
+
+
+
 
         private void ChangeDrive()
         {
@@ -175,8 +238,11 @@ namespace FileManager
             posX = currentTab == tab2 ? 72 : 3;
             for (int i = 0; i < allDrives.Length; i++)
             {
-                Console.SetCursorPosition(posX, 38 + i);
-                Console.WriteLine($"Drive {allDrives[i].Name}");
+                lock (syncObject)
+                {
+                    Console.SetCursorPosition(posX, 38 + i);
+                    Console.WriteLine($"Drive {allDrives[i].Name}");
+                }
             }
             WriteLine("Enter letter to select the drive: ");
             currentTab.ChangeDrive(Console.ReadLine());
@@ -188,10 +254,13 @@ namespace FileManager
         {
             for (int i = 0; i < 8; i++)
             {
-                Console.SetCursorPosition(3, 38 + i);
-                Console.WriteLine("".PadRight(Console.WindowWidth / 2 - 20));
-                Console.SetCursorPosition(72, 38 + i);
-                Console.WriteLine("".PadRight(Console.WindowWidth / 2 - 20));
+                lock (syncObject)
+                {
+                    Console.SetCursorPosition(3, 38 + i);
+                    Console.WriteLine("".PadRight(Console.WindowWidth / 2 - 20));
+                    Console.SetCursorPosition(72, 38 + i);
+                    Console.WriteLine("".PadRight(Console.WindowWidth / 2 - 20));
+                }
             }
         }
 
@@ -269,16 +338,22 @@ namespace FileManager
 
         public void ClearLine(string str = "")
         {
-            Console.SetCursorPosition(2, 48);
-            Console.WriteLine("".PadRight(Console.WindowWidth - 30));
+            lock (syncObject)
+            {
+                Console.SetCursorPosition(2, 48);
+                Console.WriteLine("".PadRight(Console.WindowWidth - 30));
+            }
         }
 
         public void WriteLine(string str = "")
         {
             ClearLine();
-            Console.SetCursorPosition(2, 48);
-            Console.Write(">>>>> ");
-            Console.Write(str);
+            lock (syncObject)
+            {
+                Console.SetCursorPosition(2, 48);
+                Console.Write(">>>>> ");
+                Console.Write(str);
+            }
         }
 
     }

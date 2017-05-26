@@ -20,7 +20,14 @@ namespace FileManager
 
         public void FileRename(string oldName, string newName)
         {
-            File.Move(oldName, newName);
+            try
+            {
+                File.Move(oldName, newName);
+            }
+            catch (Exception e)
+            {
+                fileManager.WriteLine(e.Message);
+            }
         }
 
         public void DirectoryRename(string oldName, string newName)
@@ -42,14 +49,28 @@ namespace FileManager
                 Console.WriteLine("That path exists already.");
                 return;
             }
-            DirectoryInfo di = Directory.CreateDirectory(sourceName);
+            try
+            {
+                DirectoryInfo di = Directory.CreateDirectory(sourceName);
+            }
+            catch (Exception e)
+            {
+                fileManager.WriteLine(e.Message);
+            }
         }
 
         public void FileMove(string sourceName, string destName)
         {
             if (File.Exists(destName))
                 File.Delete(destName);
-            File.Move(sourceName, destName);
+            try
+            {
+                File.Move(sourceName, destName);
+            }
+            catch (Exception e)
+            {
+                fileManager.WriteLine(e.Message);
+            }
         }
 
         public void DirectoryMove(string sourceName, string destName)
@@ -66,13 +87,29 @@ namespace FileManager
 
         public void FileCopy(string sourceName, string destName)
         {
-            File.Copy(sourceName, destName, true);
+            try
+            {
+                File.Copy(sourceName, destName, true);
+            }
+            catch (Exception e)
+            {
+                fileManager.WriteLine(e.Message);
+            }
         }
 
         public void DirectoryCopy(string sourceDirName, string destDirName, bool copySubDirs)
         {
             // Get the subdirectories for the specified directory.
             DirectoryInfo dir = new DirectoryInfo(sourceDirName);
+            try
+            {
+                dir.GetDirectories();
+            }
+            catch (Exception e)
+            {
+                fileManager.WriteLine(e.Message);
+                return;
+            }
             if (!dir.Exists)
             {
                 throw new DirectoryNotFoundException(
@@ -90,7 +127,15 @@ namespace FileManager
             foreach (FileInfo file in files)
             {
                 string temppath = Path.Combine(destDirName, file.Name);
-                file.CopyTo(temppath, true);
+                try
+                {
+                    file.CopyTo(temppath, true);
+                }
+                catch (Exception e)
+                {
+                    fileManager.WriteLine(e.Message);
+                    return;
+                }
             }
             // If copying subdirectories, copy them and their contents to new location.
             if (copySubDirs)

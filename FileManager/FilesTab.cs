@@ -5,11 +5,13 @@ using System.Text;
 using System.Threading.Tasks;
 using System.IO;
 using System.Diagnostics;
+using System.Threading;
 
 namespace FileManager
 {
     public class FilesTab
     {
+        private FileManager fileManager;
         private int bottomCoordTabs;
         private int leftOffsetTab;
         private int maxLineLength;
@@ -27,12 +29,14 @@ namespace FileManager
         public string Path { get; set; }
 
         public FilesTab(
+            FileManager fileManager,
             string path,
             int topCoordTabs,
             int bottomCoordTabs,
             int leftOffsetTab,
             int maxLineLength)
         {
+            this.fileManager = fileManager;
             Path = path;
             this.topCoordTabs = topCoordTabs;
             this.bottomCoordTabs = bottomCoordTabs;
@@ -49,13 +53,45 @@ namespace FileManager
             return allFileItems[currentElement];
         }
 
+
+
+
+
+
+
+
+
+
+
+        
+        
         public void GetFolderInfo(out string size, out int filesNumber, out int foldersNumber)
         {
+
+
             DirectoryInfo di = new DirectoryInfo(allFileItems[currentElement].FullPath);
             size = ConstructSize(di.EnumerateFiles("*.*", SearchOption.AllDirectories).Sum(f => f.Length));
             filesNumber = di.EnumerateFiles("*.*", SearchOption.AllDirectories).Count();
             foldersNumber = di.EnumerateDirectories("*.*", SearchOption.AllDirectories).Count();
         }
+
+        
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
         public void UpdateFolder()
         {
@@ -65,13 +101,23 @@ namespace FileManager
 
         public void EnterFolder(bool isUp = false)
         {
+            string oldPath = Path;
             if (!isUp)
             {
                 Path += allFileItems[currentElement].Name + @"\";
             }
-            dir = new DirectoryInfo(Path);
-            InitTab();
-            ShowTab();
+            try
+            {
+                dir = new DirectoryInfo(Path);
+                dir.GetDirectories();
+                InitTab();
+                ShowTab();
+            }
+            catch (Exception e)
+            {
+                fileManager.WriteLine(e.Message);
+                Path = oldPath;
+            }
         }
 
         public void ChangeDrive(string str)
@@ -91,8 +137,9 @@ namespace FileManager
                     Path = oldPath;
                 }
             }
-            catch
+            catch(Exception e)
             {
+                fileManager.WriteLine(e.Message);
             }
         }
 
@@ -115,8 +162,10 @@ namespace FileManager
                 WriteSimpleLine(allFileItems[currentElement], leftOffsetTab, CurrentLine);
         }
 
+        
         private void InitTab()
         {
+            
             FromIndex = 0;
             currentElement = 0;
             maxElements = -1;
@@ -146,15 +195,19 @@ namespace FileManager
         private void ClearTab()
         {
             for (int CurrentLine = topCoordTabs; CurrentLine < bottomCoordTabs + topCoordTabs + 1; CurrentLine++)
-                WriteClearLine(leftOffsetTab, CurrentLine);
+                lock (fileManager.syncObject)
+                    WriteClearLine(leftOffsetTab, CurrentLine);
         }
 
         private void ShowTab()
         {
             ClearTab();
-            Console.SetCursorPosition(leftOffsetTab, 2);            // title
             string str = Path.Length < 40 ? Path : string.Join("", Path.Take(20)) + " ... " + string.Join("", Path.Skip(Path.Length - 20));     //Title
-            Console.WriteLine(str.PadRight(Console.WindowWidth / 2 - 10));          // title
+            lock (fileManager.syncObject)
+            {
+                Console.SetCursorPosition(leftOffsetTab, 2);            // title
+                Console.WriteLine(str.PadRight(Console.WindowWidth / 2 - 10));          // title
+            }
             int min = MaxShowedLines < maxElements ? MaxShowedLines : maxElements;
             for (int i = 0; i < min; i++)
             {
@@ -167,7 +220,7 @@ namespace FileManager
             CurrentLine = topCoordTabs;
         }
 
-        private string ConstructSize(long x)
+        public string ConstructSize(long x)
         {
             string resultSize;
             if (x < 1000)
@@ -181,10 +234,13 @@ namespace FileManager
 
         private void WriteClearLine(int x, int y)
         {
-            string value = "";
-            Console.SetCursorPosition(x, y);
-            Console.BackgroundColor = ConsoleColor.Black;
-            Console.WriteLine(value.PadRight(Console.WindowWidth / 3 + 10));
+            lock (fileManager.syncObject)
+            {
+                string value = "";
+                Console.SetCursorPosition(x, y);
+                Console.BackgroundColor = ConsoleColor.Black;
+                Console.WriteLine(value.PadRight(Console.WindowWidth / 3 + 10));
+            }
         }
 
         private void WriteSimpleLine(FileItem item, int x, int y)
@@ -192,33 +248,39 @@ namespace FileManager
             string value = item.Name;
             if (value.Length > maxLineLength)
                 value = string.Join("", value.Take(25).ToArray()) + "[...]";
-            Console.SetCursorPosition(x + 35, y);
-            Console.WriteLine(item.Extension);
-            Console.SetCursorPosition(x, y);
-            Console.BackgroundColor = ConsoleColor.Black;
-            Console.WriteLine(value.PadRight(Console.WindowWidth / 3 + 10));
-            Console.SetCursorPosition(x + 35, y);
-            Console.WriteLine(item.Extension);
-            Console.SetCursorPosition(x + 45, y);
-            if (item.Extension != "dir")
-                Console.WriteLine(item.Size);
+            lock (fileManager.syncObject)
+            {
+                Console.SetCursorPosition(x + 35, y);
+                Console.WriteLine(item.Extension);
+                Console.SetCursorPosition(x, y);
+                Console.BackgroundColor = ConsoleColor.Black;
+                Console.WriteLine(value.PadRight(Console.WindowWidth / 3 + 10));
+                Console.SetCursorPosition(x + 35, y);
+                Console.WriteLine(item.Extension);
+                Console.SetCursorPosition(x + 45, y);
+                if (item.Extension != "dir")
+                    Console.WriteLine(item.Size);
+            }
         }
 
         private void WriteSelectedLine(FileItem item, int x, int y)
         {
             string value = item.Name;
             if (value.Length > maxLineLength)
-                value = string.Join("", value.Take(15).ToArray()) + "[...]";
-            Console.SetCursorPosition(x, y);
-            Console.BackgroundColor = ConsoleColor.Green;
-            Console.ForegroundColor = ConsoleColor.DarkGreen;
-            Console.WriteLine(value.PadRight(Console.WindowWidth / 3 + 10)); // <-- see note
-            Console.SetCursorPosition(x + 35, y);
-            Console.WriteLine(item.Extension);
-            Console.SetCursorPosition(x + 45, y);
-            if (item.Extension != "dir")
-                Console.WriteLine(item.Size);
-            Console.ResetColor();
+                value = string.Join("", value.Take(25).ToArray()) + "[...]";
+            lock (fileManager.syncObject)
+            {
+                Console.SetCursorPosition(x, y);
+                Console.BackgroundColor = ConsoleColor.Green;
+                Console.ForegroundColor = ConsoleColor.DarkGreen;
+                Console.WriteLine(value.PadRight(Console.WindowWidth / 3 + 10)); // <-- see note
+                Console.SetCursorPosition(x + 35, y);
+                Console.WriteLine(item.Extension);
+                Console.SetCursorPosition(x + 45, y);
+                if (item.Extension != "dir")
+                    Console.WriteLine(item.Size);
+                Console.ResetColor();
+            }
         }
 
         public void MoveCursor(bool isDown = true)
